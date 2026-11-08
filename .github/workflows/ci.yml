@@ -1,0 +1,28 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.11", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: pip install -e ".[dev]"
+      - run: pytest -q
+      - name: Clean example set must pass strict lint
+        run: trapbench lint examples/tasks.jsonl --strict
+      - name: Flawed example set must fail lint
+        run: |
+          if trapbench lint examples/bad_tasks.jsonl > /dev/null; then
+            echo "bad_tasks.jsonl unexpectedly passed"; exit 1
+          fi
+      - name: Grade the example answers
+        run: trapbench grade examples/tasks.jsonl examples/answers.jsonl --details
